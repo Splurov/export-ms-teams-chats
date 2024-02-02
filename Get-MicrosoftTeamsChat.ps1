@@ -78,9 +78,39 @@ foreach ($chat in $chats) {
     Write-Progress -Activity "Exporting Chats" -Status "Chat $($chatIndex) of $($chats.count)" -PercentComplete $(($chatIndex / $chats.count) * 100)
     $chatIndex += 1
 
-    $members = Get-Members $chat $clientId $tenantId
+    Write-Host ("`r`n$chatIndex :: Before Name")
+
     $name = ConvertTo-ChatName $chat $members $me $clientId $tenantId
+    $nameFixed = $name.Split([IO.Path]::GetInvalidFileNameChars()) -join "_"
+
+    if ($nameFixed.length -gt 64) {
+        $nameFixed = $nameFixed.Substring(0, 64)
+    }
+
+    $file = Join-Path -Path $exportFolder -ChildPath "$nameFixed.html"
+
+    if ($chat.chatType -ne "oneOnOne") {
+        # add hash of chatId in case multiple chats have the same name or members
+        $chatIdStream = [IO.MemoryStream]::new([byte[]][char[]]$chat.id)
+        $chatIdShortHash = (Get-FileHash -InputStream $chatIdStream -Algorithm SHA256).Hash.Substring(0,8)
+        $file = ($file -Replace ".html", ( " ($chatIdShortHash).html"))
+    }
+
+    if (Test-Path $file) {
+        Write-Host ("`r`n$name :: Already downloaded")
+        Write-Host -ForegroundColor Yellow "File exits. Skipping..."
+        continue
+    }
+
+    Write-Host ("`r`n$name :: Start Processing")
+
+    $members = Get-Members $chat $clientId $tenantId
+
+    Write-Host ("`r`n$name :: Got Members")
+
     $messages = Get-Messages $chat $clientId $tenantId
+
+    Write-Host ("`r`n$name :: Got Messages")
 
     $messagesHTML = $null
 
@@ -152,21 +182,6 @@ foreach ($chat in $chats) {
             -Replace "###MESSAGES###", $messagesHTML`
             -Replace "###CHATNAME###", $name`
             -Replace "###STYLE###", $stylesheetCSS`
-
-        $name = $name.Split([IO.Path]::GetInvalidFileNameChars()) -join "_"
-
-        if ($name.length -gt 64) {
-            $name = $name.Substring(0, 64)
-        }
-
-        $file = Join-Path -Path $exportFolder -ChildPath "$name.html"
-
-        if ($chat.chatType -ne "oneOnOne") {
-            # add hash of chatId in case multiple chats have the same name or members
-            $chatIdStream = [IO.MemoryStream]::new([byte[]][char[]]$chat.id)
-            $chatIdShortHash = (Get-FileHash -InputStream $chatIdStream -Algorithm SHA256).Hash.Substring(0,8)
-            $file = ($file -Replace ".html", ( " ($chatIdShortHash).html"))
-        }
 
         Write-Host -ForegroundColor Green "Exporting $file..."
         $chatHTML | Out-File -LiteralPath $file

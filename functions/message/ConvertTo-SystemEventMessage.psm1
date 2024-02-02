@@ -51,7 +51,7 @@ function ConvertTo-SystemEventMessage ($eventDetail, $clientId, $tenantId) {
         }
         Default {
             Write-Warning "Unhandled system event type: $($eventDetail."@odata.type")"
-            "Unhandled system event type $($eventDetail."@odata.type"): $($eventDetail | ConvertTo-Json -Depth 5)"
+            "Unhandled system event type $($eventDetail."@odata.type")"
         }
     }
 }

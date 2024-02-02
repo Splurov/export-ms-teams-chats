@@ -8,43 +8,5 @@ $defaultProfilePicture = ("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2w
 $attempted = @{}
 
 function Get-ProfilePicture ($userId, $assetsFolderPath, $clientId, $tenantId) {
-    $profilePictureFile = Join-Path -Path "$assetsFolderPath" -ChildPath "$userId.jpg"
-
-    if (Test-Path $profilePictureFile) {
-        # if available
-        Write-Verbose "Profile picture cache hit."
-        "assets/$userId.jpg"
-    }
-    elseif (($null -eq $userId) -or ($attempted.ContainsKey($userId))) {
-        Write-Verbose "Profile picture unavailable, using default."
-
-        # if userId is null or failed to download profile picture
-        $defaultProfilePicture
-    }
-    else {
-        # if never attempted
-        
-        Write-Verbose "Profile picture cache miss, fetching."
-
-        $attempted.Add($userId, $null)
-        $profilePhotoUri = "https://graph.microsoft.com/v1.0/users/" + $userId + "/photo/`$value"
-
-        try {
-            $start = Get-Date
-
-            Invoke-Retry -Code {
-                Invoke-WebRequest -Uri $profilePhotoUri -Headers @{
-                    "Authorization" = "Bearer $(Get-GraphAccessToken $clientId $tenantId)"
-                } -OutFile $profilePictureFile
-            }
-
-            Write-Verbose "Took $(((Get-Date) - $start).TotalSeconds)s to download profile picture."
-
-            "assets/$userId.jpg"
-        }
-        catch {
-            Write-Verbose "Failed to fetch profile picture."
-            $defaultProfilePicture
-        }
-    }
+    $defaultProfilePicture
 }
